@@ -1,0 +1,7 @@
+api-auth/node_modules
+api-gateway/node_modules
+api-ibe/node_modules
+api-quiz/node_modules
+api-ibe/db-backup
+testclient/
+docker-compose.yml
