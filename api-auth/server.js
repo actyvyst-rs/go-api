@@ -10,6 +10,7 @@ const server = express();
 mongoose
   .connect(
     mongoURI,
+    // 'mongodb://mongo:27017/go-auth',
     { useNewUrlParser: true }
   )
   .then(() => {
@@ -18,6 +19,18 @@ mongoose
   .catch(err => {
     console.log(err);
   });
+
+// mongoose
+//   .connect(
+//     'mongodb://mongo/go-auth',
+//     { useNewUrlParser: true }
+//   )
+//   .then(() => {
+//     console.log('Connected to database');
+//   })
+//   .catch(err => {
+//     console.log(err);
+//   });
 
 server.use(bodyParser.urlencoded({ extended: false }));
 server.use(bodyParser.json());

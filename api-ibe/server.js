@@ -5,10 +5,10 @@ var logger = require('morgan'),
   errorhandler = require('errorhandler'),
   bodyParser = require('body-parser'),
   mongoose = require('mongoose'),
-  helmet = require('helmet'),
-  config = require('./config.json');
+  helmet = require('helmet');
+const { port, mongoURI } = require('./config');
 
-var app = express();
+const app = express();
 app.use(helmet());
 
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -20,10 +20,12 @@ if (process.env.NODE_ENV === 'development') {
   app.use(errorhandler());
 }
 
-var port = process.env.PORT || 3003;
-
 mongoose.Promise = global.Promise;
-mongoose.connect(process.env.IBE_MONGO_URI);
+mongoose.connect(
+  mongoURI,
+  // 'mongodb://mongo:27017/go-ibe',
+  { useNewUrlParser: true }
+);
 
 app.use(require('./offer-routes'));
 app.use(require('./vendor-routes'));

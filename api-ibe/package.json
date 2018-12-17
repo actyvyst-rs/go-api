@@ -4,6 +4,8 @@
   "description": "Acticity Dev API",
   "main": "server.js",
   "scripts": {
+    "run": "node server",
+    "dev": "nodemon server.js",
     "test": "test"
   },
   "author": "thomas g.",

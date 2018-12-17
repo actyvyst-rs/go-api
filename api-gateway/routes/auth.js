@@ -3,13 +3,10 @@ const router = express.Router();
 const axios = require('axios');
 const uuid = require('uuid/v4');
 const verifyToken = require('./../middleware/jwt-verify');
+const { authPort } = require('../config');
 
-const {
-  hostname,
-  serviceAuth: { port }
-} = require('./../config');
 const httpClient = axios.create({
-  baseURL: 'http://api-auth/',
+  baseURL: `http://api-auth:${authPort}/`,
   // baseURL: `http://${hostname}:${port}/`,
   timeout: 2000
 });

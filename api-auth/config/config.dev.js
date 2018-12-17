@@ -1,7 +1,7 @@
-const { QUIZ_PORT, QUIZ_MONGO_URI, JWT_SECRET } = process.env;
+const { AUTH_PORT, AUTH_MONGO_URI, JWT_SECRET } = process.env;
 
 module.exports = {
-  port: QUIZ_PORT,
+  port: AUTH_PORT,
   jwtSecret: JWT_SECRET,
-  mongoURI: QUIZ_MONGO_URI
+  mongoURI: AUTH_MONGO_URI
 };

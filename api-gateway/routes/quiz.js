@@ -2,12 +2,9 @@ const express = require('express');
 const uuid = require('uuid');
 const router = express.Router();
 const axios = require('axios');
-const {
-  hostname,
-  serviceQuiz: { port }
-} = require('./../config');
+const { quizPort } = require('../config');
 const httpClient = axios.create({
-  baseURL: 'http://api-quiz/',
+  baseURL: `http://api-quiz:${quizPort}/`,
   // baseURL: `http://${hostname}:${port}/`,
   timeout: 2000
 });

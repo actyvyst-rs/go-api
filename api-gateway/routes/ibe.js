@@ -1,18 +1,27 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const { ibePort } = require('../config');
 
-const {
-  hostname,
-  serviceIBE: { port }
-} = require('./../config');
 const httpClient = axios.create({
-  baseURL: 'http://api-ibe/',
+  baseURL: `http://api-ibe:${ibePort}/`,
   // baseURL: `http://${hostname}:${port}/`,
   timeout: 2000
 });
 
-router.get('/offers', async (_, res) => {
+router.get('/', (req, res) => {
+  httpClient
+    .get('/')
+    .then(response => {
+      return res.json(response.data);
+    })
+    .catch(error => {
+      console.log(error.response.data);
+      return res.status(error.response.status).json(error.response.data);
+    });
+});
+
+router.get('/offers', (_, res) => {
   httpClient
     .get('/offers')
     .then(response => {

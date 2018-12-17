@@ -3,5 +3,9 @@ api-gateway/node_modules
 api-ibe/node_modules
 api-quiz/node_modules
 api-ibe/db-backup
+mongo-seed/node_modules
 testclient/
-docker-compose.yml
+db-test/
+mongo-seed/
+*.yml
+Dockerrun.aws.json
