@@ -2,7 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const { port, mongoURI } = require('./config');
-const quizRoutes = require('./routes/quiz');
+const activityRoutes = require('./routes/activities');
 
 const server = express();
 
@@ -21,8 +21,8 @@ mongoose
 server.use(bodyParser.urlencoded({ extended: false }));
 server.use(bodyParser.json());
 
-server.use('/', quizRoutes);
+server.use('/', activityRoutes);
 
 server.listen(port, () => {
-  console.log(`actyvyst Go Quiz API listening on port ${port}`);
+  console.log(`actyvyst Go Activities API listening on port ${port}`);
 });

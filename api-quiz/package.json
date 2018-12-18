@@ -14,6 +14,7 @@
     "body-parser": "^1.18.3",
     "express": "^4.16.4",
     "mongoose": "^5.3.14",
-    "uuid": "^3.3.2"
+    "uuid": "^3.3.2",
+    "json-api-serializer": "^1.14.0"
   }
 }

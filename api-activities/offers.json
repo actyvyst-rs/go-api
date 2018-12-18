@@ -1,0 +1,6 @@
+{"_id":{"$oid":"5c018af6eb651aa548fb903f"},"activity":{"$oid":"5c0188f9eb651aa548fb8de3"},"startdate":{"$date":"2019-06-21T14:00:00.000Z"},"enddate":{"$date":"2019-06-21T16:00:00.000Z"},"pricepp":36,"currency":"EUR"}
+{"_id":{"$oid":"5c019efbeb651aa548fba9f2"},"activity":{"$oid":"5c0188f9eb651aa548fb8de3"},"startdate":{"$date":"2019-06-21T12:00:00.000Z"},"enddate":{"$date":"2019-06-21T14:00:00.000Z"},"pricepp":34,"currency":"EUR"}
+{"_id":{"$oid":"5c019f46eb651aa548fbaa5a"},"activity":{"$oid":"5c0188f9eb651aa548fb8de3"},"startdate":{"$date":"2019-06-21T10:00:00.000Z"},"enddate":{"$date":"2019-06-21T12:00:00.000Z"},"pricepp":38,"currency":"EUR"}
+{"_id":{"$oid":"5c019fc6eb651aa548fbab1a"},"activity":{"$oid":"5c0179afeb651aa548fb8198"},"startdate":{"$date":"2019-06-21T09:00:00.000Z"},"enddate":{"$date":"2019-06-21T10:00:00.000Z"},"pricepp":12,"currency":"EUR"}
+{"_id":{"$oid":"5c019ff7eb651aa548fbab61"},"activity":{"$oid":"5c0179afeb651aa548fb8198"},"startdate":{"$date":"2019-06-21T12:00:00.000Z"},"enddate":{"$date":"2019-06-21T13:00:00.000Z"},"pricepp":14,"currency":"EUR"}
+{"_id":{"$oid":"5c01a2bfeb651aa548fbafce"},"activity":{"$oid":"5c01a171eb651aa548fbad8f"},"startdate":{"$date":"2019-06-21T18:00:00.000Z"},"enddate":{"$date":"2019-06-21T20:00:00.000Z"},"pricepp":19.5,"currency":"EUR"}

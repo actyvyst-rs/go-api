@@ -1,23 +1,25 @@
 const express = require('express');
 const router = express.Router();
 const uuid = require('uuid/v4');
+const JSONAPISerializer = require('json-api-serializer');
 const { defaultSampleSize } = require('../config');
 const quizData = require('../data/quiz.js');
 
+const quizSerializer = new JSONAPISerializer();
+quizSerializer.register('Quiz');
+
 router.get('/', (req, res) => {
   //   var sampleSize = parseInt(req.query.numq);
+  let samplesize = defaultSampleSize;
+  if (req.query.samplesize && Number(req.query.samplesize)) {
+    samplesize = parseInt(req.query.samplesize);
+  }
+
   quizData
-    .getQuiz(defaultSampleSize)
+    .getQuiz(samplesize)
     .then(quiz => {
-      res.status(200).json({
-        data: {
-          type: 'Quiz',
-          id: uuid(),
-          attributes: {
-            questions: quiz.questions
-          }
-        }
-      });
+      quiz.id = uuid();
+      res.send(quizSerializer.serialize('Quiz', quiz));
     })
     .catch(err => {
       console.log(err);

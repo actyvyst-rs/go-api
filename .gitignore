@@ -1,10 +1,10 @@
 api-auth/node_modules
 api-gateway/node_modules
-api-ibe/node_modules
+api-ibe-old/
+api-activities/node_modules
 api-quiz/node_modules
 api-ibe/db-backup
 mongo-seed/
-mongo-seed/node_modules
 testclient/
 db-test/
 docker-*.yml

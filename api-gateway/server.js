@@ -3,7 +3,7 @@ const bodyParser = require('body-parser');
 const { port } = require('./config');
 const gatewayRoutes = require('./routes/gateway');
 const quizRoutes = require('./routes/quiz');
-const ibeRoutes = require('./routes/ibe');
+const activityRoutes = require('./routes/activities');
 const userRoutes = require('./routes/user');
 const authRoutes = require('./routes/auth');
 
@@ -16,10 +16,10 @@ server.use(bodyParser.json());
 
 server.use('/api', gatewayRoutes);
 server.use('/api/quiz', quizRoutes);
-server.use('/api/ibe', ibeRoutes);
+server.use('/api/activities', activityRoutes);
 server.use('/api/user', userRoutes);
 server.use('/api/auth', authRoutes);
 
 server.listen(port, () => {
-  console.log(`holidoo API gateway listening on port ${port}`);
+  console.log(`actyvyst GO Gateway API listening on port ${port}`);
 });

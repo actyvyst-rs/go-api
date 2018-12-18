@@ -5,13 +5,12 @@ const axios = require('axios');
 const { quizPort } = require('../config');
 const httpClient = axios.create({
   baseURL: `http://api-quiz:${quizPort}/`,
-  // baseURL: `http://${hostname}:${port}/`,
   timeout: 2000
 });
 
 router.get('/', (req, res) => {
   httpClient
-    .get('/')
+    .get('/', { params: req.query })
     .then(response => {
       return res.status(200).json(response.data);
     })
