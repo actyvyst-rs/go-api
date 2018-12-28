@@ -4,6 +4,7 @@ const JSONAPISerializer = require('json-api-serializer');
 const mongoose = require('mongoose');
 const Activity = require('../models/Activity');
 const Category = require('../models/Category');
+const activityDBHelper = require('../data/activity');
 
 const activitySerializer = new JSONAPISerializer();
 activitySerializer.register('Activity', { id: '_id' });
@@ -21,55 +22,47 @@ router.get('/health', (req, res) => {
   });
 });
 
+router.get('/:id', (req, res) => {
+  const matchPhrase = { _id: mongoose.Types.ObjectId(req.params.id) };
+  activityDBHelper
+    .aggregateActivities(matchPhrase)
+    .then(activity => {
+      return res.send(activitySerializer.serialize('Activity', activity));
+    })
+    .catch(err => {
+      res.status(400).send(activitySerializer.serializeError(err));
+      console.log(err);
+    });
+});
+
 router.get('/', async (req, res) => {
-  var categoryMatchPhrase = {};
-  if (req.query.category) {
-    console.log(`Category=${req.query.category}`);
-    await Category.findOne({ name: req.query.category })
-      .exec()
-      .then(category => {
-        if (category) {
-          console.log('Category:');
-          console.log(category);
-          categoryMatchPhrase = {
-            category: mongoose.Types.ObjectId(category.id)
-          };
-        } else {
-          return res.send(activitySerializer.serialize('Activity', {}));
-        }
-      })
-      .catch(err => {
-        console.log(err);
-        return res.status(500).send(activitySerializer.serializeError(err));
-      });
-  }
-  console.log('categoryMatchPhrase:');
-  console.log(categoryMatchPhrase);
-  Activity.aggregate([
-    { $match: categoryMatchPhrase },
-    {
-      $lookup: {
-        from: 'categories',
-        localField: 'category',
-        foreignField: '_id',
-        as: 'category'
-      }
-    },
-    {
-      $unwind: '$category'
-    },
-    {
-      $lookup: {
-        from: 'providers',
-        localField: 'provider',
-        foreignField: '_id',
-        as: 'provider'
-      }
-    },
-    {
-      $unwind: '$provider'
+  var matchPhrase = {};
+  if (req.params.id) {
+    const objId = mongoose.Types.ObjectId(id);
+    matchPhrase = { _id: objId };
+  } else {
+    if (req.query.category) {
+      await Category.findOne({ name: req.query.category })
+        .exec()
+        .then(category => {
+          if (category) {
+            matchPhrase = {
+              category: mongoose.Types.ObjectId(category.id)
+            };
+          } else {
+            return res.send(activitySerializer.serialize('Activity', {}));
+          }
+        })
+        .catch(err => {
+          console.log(err);
+          return res.status(500).send(activitySerializer.serializeError(err));
+        });
     }
-  ])
+  }
+  console.log('matchPhrase:');
+  console.log(matchPhrase);
+  activityDBHelper
+    .aggregateActivities(matchPhrase)
     .then(activities => {
       res.send(activitySerializer.serialize('Activity', activities));
     })

@@ -1,12 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const JSONAPISerializer = require('json-api-serializer');
 const { activitiesPort } = require('../config');
 
 const httpClient = axios.create({
   baseURL: `http://api-activities:${activitiesPort}/`,
   timeout: 2000
 });
+
+const activitySerializer = new JSONAPISerializer();
+activitySerializer.register('Activity');
 
 router.get('/', (req, res) => {
   httpClient
@@ -28,33 +32,19 @@ router.get('/health', (req, res) => {
     })
     .catch(err => {
       console.log(err);
-      res.json({
-        error: {
-          code: err.code,
-          source: 'actyvyst Go Activities API',
-          title: err.code,
-          details: ''
-        }
-      });
+      res.status(500).send(activitySerializer.serializeError(err));
     });
 });
 
-router.get('/', (req, res) => {
+router.get('/:id', (req, res) => {
   httpClient
-    .get('/')
+    .get(`/${req.params.id}`)
     .then(response => {
       res.json(response.data);
     })
     .catch(err => {
       console.log(err);
-      res.json({
-        error: {
-          code: err.code,
-          source: 'actyvyst Go Activities API',
-          title: err.code,
-          details: ''
-        }
-      });
+      res.status(500).send(activitySerializer.serializeError(err));
     });
 });
 
