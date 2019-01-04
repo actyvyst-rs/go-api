@@ -23,7 +23,13 @@ const UserSchema = new Schema({
   date: {
     type: Date,
     default: Date.now
-  }
+  },
+  refreshTokens: [
+    {
+      clientId: String,
+      tokenId: String
+    }
+  ]
 });
 
 module.exports = User = mongoose.model('users', UserSchema);

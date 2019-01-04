@@ -7,7 +7,7 @@ const pingHandler = (_, res) => {
       type: 'Ping',
       id: 0,
       attributes: {
-        message: 'Hallo Thomas, Up and running',
+        message: 'Up and running',
         service: 'GO destination API gateway'
       }
     }

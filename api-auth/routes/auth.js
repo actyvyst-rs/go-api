@@ -5,6 +5,10 @@ const jwt = require('jsonwebtoken');
 const uuid = require('uuid/v4');
 
 const User = require('../models/User');
+const { addRefreshToken } = require('../util/dbutil');
+const { extractRequestParams } = require('../util/extract');
+const { ParamError } = require('../util/err');
+
 const { jwtSecret } = require('./../config');
 
 const pingHandler = (_, res) => {
@@ -20,105 +24,84 @@ const pingHandler = (_, res) => {
 };
 
 const loginHandler = (req, res) => {
-  // Verify if request is valid
-  if (!req.body.email || !req.body.password) {
-    const code = 'missingRequiredParameter';
-    const title = 'Required request parameters are missing';
-    const detail =
-      'One or more required request parameters are missing. See source for details.';
-    const source = { parameters: [] };
-    if (!req.body.email) {
-      source.parameters.push('email');
-    }
-    if (!req.body.password) {
-      source.parameters.push('password');
-    }
-    return res.status(400).json({
-      errors: [
-        {
-          status: 400,
-          code: code,
-          ref_id: uuid(),
-          title: title,
-          detail: detail,
-          source: source
-        }
-      ]
-    });
-  }
-  const email = req.body.email;
-  const password = req.body.password;
-  // Lookup user by email
-  User.findOne({ email })
+  // State object to pass state through Promise chain
+  let chainState = {};
+  // Check if email & password are part of request
+  extractRequestParams(req.body, {
+    email: 'String',
+    password: 'String'
+  })
+    .then(credentials => {
+      // Find user in DB by email
+      chainState.credentials = credentials;
+      return User.findOne({ email: credentials.email });
+    })
     .then(user => {
-      // If user not found, return 404
       if (!user) {
-        return res.status(404).json({
-          errors: [
-            {
-              status: 400,
-              code: 'wrongCredentials',
-              ref_id: uuid(),
-              title: 'Wrong credentials',
-              detail:
-                "Username and password do not match or you don't have an account yet",
-              source: { parameters: ['email'] }
-            }
-          ]
+        return Promise.reject(new Error('User not found'));
+      } else {
+        chainState.user = user;
+        // Check password
+        return bcrypt.compare(chainState.credentials.password, user.password);
+      }
+    })
+    .then(isMatch => {
+      if (!isMatch) {
+        return Promise.reject(new Error('Wrong Password'));
+      } else {
+        const payload = {
+          id: chainState.user._id,
+          firstName: chainState.user.firstName,
+          lastName: chainState.user.lastName,
+          email: chainState.user.email
+        };
+        // Create access token
+        jwt.sign(payload, jwtSecret, { expiresIn: 3600 }, (err, token) => {
+          if (err) {
+            return Promise.reject(new Error('JWT signing failed'));
+          } else {
+            chainState.token = token;
+            return Promise.resolve(token);
+          }
         });
       }
-      // Check password
-      bcrypt.compare(password, user.password).then(isMatch => {
-        if (isMatch) {
-          // User matched
-          const payload = {
-            id: user._id,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email
-          };
-
-          // Sign token
-          jwt.sign(payload, jwtSecret, { expiresIn: 3600 }, (err, token) => {
-            if (err) {
-              return res.status(500).json({
-                errors: [
-                  {
-                    status: 500,
-                    code: 'unexpectedServerError',
-                    ref_id: uuid(),
-                    title: 'Unexpected Server Error',
-                    detail: err.message,
-                    source: {}
-                  }
-                ]
-              });
-            }
-            res.status(200).json({
-              data: {
-                type: 'JSON Web Token',
-                id: user.id,
-                attributes: {
-                  token: 'Bearer ' + token
-                }
-              }
-            });
-          });
-          //Wrong password
-        } else {
-          res.status(400).json({
-            errors: [
-              {
-                status: 400,
-                code: 'wrongCredentials',
-                ref_id: uuid(),
-                title: 'Wrong credentials',
-                detail:
-                  "Username and password do not match or you don't have an account yet",
-                source: { parameters: ['username', 'password'] }
-              }
-            ]
-          });
+    })
+    .then(token => {
+      const refreshPayload = { id: uuid(), client: 'test' };
+      chainState.refreshPayload = refreshPayload;
+      // Create refresh token
+      jwt.sign(
+        refreshPayload,
+        jwtSecret,
+        { expiresIn: 2500000 },
+        (err, refreshToken) => {
+          if (err) {
+            return Promise.reject(new Error('JWT signing failed'));
+          } else {
+            chainState.refreshToken = refreshToken;
+            return Promise.resolve(refreshToken);
+          }
+        }
+      );
+    })
+    .then(refreshToken => {
+      // Store id of refresh token in DB
+      return addRefreshToken(
+        chainState.user._id,
+        chainState.refreshPayload.id,
+        chainState.refreshPayload.client
+      );
+    })
+    .then(refreshToken => {
+      // Return access and refresh token
+      return res.status(200).json({
+        data: {
+          type: 'JSON Web Token',
+          id: chainState.user._id,
+          attributes: {
+            token: chainState.token,
+            refreshToken: chainState.refreshToken
+          }
         }
       });
     })
