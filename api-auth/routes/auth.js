@@ -37,15 +37,16 @@ const loginHandler = (req, res) => {
       return User.findOne({ email: credentials.email });
     })
     .then(user => {
+      // Check password
       if (!user) {
         return Promise.reject(new Error('User not found'));
       } else {
         chainState.user = user;
-        // Check password
         return bcrypt.compare(chainState.credentials.password, user.password);
       }
     })
     .then(isMatch => {
+      // Create access token
       if (!isMatch) {
         return Promise.reject(new Error('Wrong Password'));
       } else {
@@ -55,7 +56,6 @@ const loginHandler = (req, res) => {
           lastName: chainState.user.lastName,
           email: chainState.user.email
         };
-        // Create access token
         jwt.sign(payload, jwtSecret, { expiresIn: 3600 }, (err, token) => {
           if (err) {
             return Promise.reject(new Error('JWT signing failed'));
@@ -67,9 +67,9 @@ const loginHandler = (req, res) => {
       }
     })
     .then(token => {
+      // Create refresh token
       const refreshPayload = { id: uuid(), client: 'test' };
       chainState.refreshPayload = refreshPayload;
-      // Create refresh token
       jwt.sign(
         refreshPayload,
         jwtSecret,
@@ -106,6 +106,7 @@ const loginHandler = (req, res) => {
       });
     })
     .catch(err => {
+      // Handle errors
       res.status(500).json({
         errors: [
           {
