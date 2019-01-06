@@ -19,6 +19,7 @@ const extractRequestParams = (obj, params) => {
     if (missingParams.length === 0) {
       return resolve(result);
     } else {
+      console.log(missingParams);
       return reject(new ParamError('Parameters could not be found'));
     }
   });

@@ -77,7 +77,34 @@ router.post('/login', (req, res) => {
     });
 });
 
-router.get('/current', verifyToken, (req, res) => {
+router.post('/accesstoken', (req, res) => {
+  httpClient
+    .post('/accesstoken', req.body)
+    .then(response => {
+      return res.json(response.data);
+    })
+    .catch(error => {
+      if (error.response) {
+        return res.status(error.response.status).json(error.response.data);
+      } else {
+        return res.status(500).json({
+          errors: [
+            {
+              status: 500,
+              code: 'serviceNotAvailable',
+              title: 'Service not available',
+              details: error.message,
+              source: {
+                parameters: ['authAPI']
+              }
+            }
+          ]
+        });
+      }
+    });
+});
+
+router.get('/profile', verifyToken, (req, res) => {
   res.status(200).json({
     data: {
       type: 'User',

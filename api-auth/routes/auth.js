@@ -3,13 +3,18 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const uuid = require('uuid/v4');
+const nodeUtil = require('util');
 
 const User = require('../models/User');
+const RefreshToken = require('../models/RefreshToken');
 const { addRefreshToken } = require('../util/dbutil');
 const { extractRequestParams } = require('../util/extract');
-const { ParamError } = require('../util/err');
 
-const { jwtSecret } = require('./../config');
+const {
+  jwtSecret,
+  jwtTokenExpiration,
+  jwtRefreshTokenExpiration
+} = require('./../config');
 
 const pingHandler = (_, res) => {
   res.json({
@@ -23,10 +28,14 @@ const pingHandler = (_, res) => {
   });
 };
 
+const promJwtVerify = nodeUtil.promisify(jwt.verify);
+const promJwtSign = nodeUtil.promisify(jwt.sign);
+const promBcryptCompare = nodeUtil.promisify(bcrypt.compare);
+
 const loginHandler = (req, res) => {
   // State object to pass state through Promise chain
   let chainState = {};
-  // Check if email & password are part of request
+  // Extract email & password from request
   extractRequestParams(req.body, {
     email: 'String',
     password: 'String'
@@ -39,65 +48,52 @@ const loginHandler = (req, res) => {
     .then(user => {
       // Check password
       if (!user) {
-        return Promise.reject(new Error('User not found'));
+        throw new Error('user not found');
       } else {
         chainState.user = user;
-        return bcrypt.compare(chainState.credentials.password, user.password);
+        return promBcryptCompare(
+          chainState.credentials.password,
+          user.password
+        );
       }
     })
     .then(isMatch => {
-      // Create access token
       if (!isMatch) {
-        return Promise.reject(new Error('Wrong Password'));
+        throw new Error('password invalid');
       } else {
+        // Create access token
         const payload = {
           id: chainState.user._id,
           firstName: chainState.user.firstName,
           lastName: chainState.user.lastName,
           email: chainState.user.email
         };
-        jwt.sign(payload, jwtSecret, { expiresIn: 3600 }, (err, token) => {
-          if (err) {
-            return Promise.reject(new Error('JWT signing failed'));
-          } else {
-            chainState.token = token;
-            return Promise.resolve(token);
-          }
+        return promJwtSign(payload, jwtSecret, {
+          expiresIn: jwtTokenExpiration
         });
       }
     })
     .then(token => {
       // Create refresh token
-      const refreshPayload = { id: uuid(), client: 'test' };
+      chainState.token = token;
+      const refreshPayload = { name: 'refreshToken' };
       chainState.refreshPayload = refreshPayload;
-      jwt.sign(
-        refreshPayload,
-        jwtSecret,
-        { expiresIn: 2500000 },
-        (err, refreshToken) => {
-          if (err) {
-            return Promise.reject(new Error('JWT signing failed'));
-          } else {
-            chainState.refreshToken = refreshToken;
-            return Promise.resolve(refreshToken);
-          }
-        }
-      );
+      return promJwtSign(refreshPayload, jwtSecret, {
+        expiresIn: jwtRefreshTokenExpiration
+      });
     })
     .then(refreshToken => {
+      chainState.refreshToken = refreshToken;
       // Store id of refresh token in DB
-      return addRefreshToken(
-        chainState.user._id,
-        chainState.refreshPayload.id,
-        chainState.refreshPayload.client
-      );
+
+      return addRefreshToken(chainState.user.id, refreshToken, 'test');
     })
-    .then(refreshToken => {
+    .then(() => {
       // Return access and refresh token
       return res.status(200).json({
         data: {
           type: 'JSON Web Token',
-          id: chainState.user._id,
+          id: chainState.user.id,
           attributes: {
             token: chainState.token,
             refreshToken: chainState.refreshToken
@@ -107,7 +103,7 @@ const loginHandler = (req, res) => {
     })
     .catch(err => {
       // Handle errors
-      res.status(500).json({
+      return res.status(500).json({
         errors: [
           {
             status: 500,
@@ -116,6 +112,93 @@ const loginHandler = (req, res) => {
             title: 'Service not available.',
             details: err.message,
             source: { parameters: ['database'] }
+          }
+        ]
+      });
+    });
+};
+
+const accessTokenHandler = (req, res) => {
+  let chainState = {};
+  // extract token and refreshtoken from body
+  extractRequestParams(req.body, { token: 'String', refreshToken: 'String' })
+    .then(result => {
+      // get user from access token (even if token already expired)
+      chainState.refreshToken = result.refreshToken;
+      chainState.token = result.token;
+      return promJwtVerify(result.token, jwtSecret, {
+        ignoreExpiration: true
+      });
+    })
+    .then(decodedToken => {
+      // verify refreshtoken
+      chainState.userId = decodedToken.id;
+      return promJwtVerify(chainState.refreshToken, jwtSecret);
+    })
+    .then(decodedToken => {
+      //check db for matching record for refreshtoken, user and client
+      return RefreshToken.findOne({
+        refreshToken: chainState.refreshToken,
+        user: chainState.userId,
+        client: 'test'
+      });
+    })
+    .then(refreshToken => {
+      // if refreshToken not found in db, throw error
+      if (!refreshToken) {
+        throw new Error('refreshToken is null');
+      }
+      // Get user info from db
+      return User.findOne({ _id: chainState.userId });
+    })
+    .then(user => {
+      // create new accesstoken
+      chainState.user = user;
+      const payload = {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email
+      };
+      return promJwtSign(payload, jwtSecret, { expiresIn: jwtTokenExpiration });
+    })
+    .then(token => {
+      chainState.newToken = token;
+      //create new refreshToken
+      const payload = { name: 'refreshToken' };
+      return promJwtSign(payload, jwtSecret, {
+        expiresIn: jwtRefreshTokenExpiration
+      });
+    })
+    .then(refreshToken => {
+      chainState.newRefreshToken = refreshToken;
+      return addRefreshToken(
+        chainState.user.id,
+        chainState.newRefreshToken,
+        'test'
+      );
+    })
+    .then(() => {
+      return res.status(200).json({
+        data: {
+          type: 'AccessToken',
+          attributes: {
+            token: chainState.newToken,
+            refreshToken: chainState.newRefreshToken
+          }
+        }
+      });
+    })
+    .catch(err => {
+      return res.status(500).json({
+        errors: [
+          {
+            status: 500,
+            code: 'serviceNotAvailable',
+            ref_id: uuid(),
+            title: 'Service not available.',
+            details: err.message,
+            source: {}
           }
         ]
       });
@@ -252,6 +335,7 @@ const currentHandler = (req, res) => {
 
 router.get('/', pingHandler);
 router.post('/login', loginHandler);
+router.post('/accesstoken', accessTokenHandler);
 router.post('/register', registerHandler);
 router.get('/current', currentHandler);
 module.exports = router;
