@@ -4,7 +4,7 @@ const bodyParser = require('body-parser');
 const { port, mongoURI } = require('./config');
 const quizRoutes = require('./routes/quiz');
 
-const server = express();
+const app = express();
 
 mongoose
   .connect(
@@ -18,11 +18,19 @@ mongoose
     console.log(err);
   });
 
-server.use(bodyParser.urlencoded({ extended: false }));
-server.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
-server.use('/', quizRoutes);
+app.use('/', quizRoutes);
 
-server.listen(port, () => {
+server = app.listen(port, () => {
   console.log(`actyvyst Go Quiz API listening on port ${port}`);
+});
+
+process.on('SIGTERM', () => {
+  console.info('SIGTERM signal received.');
+  server.close(() => {
+    console.log('Http server closed.');
+    process.exit(0);
+  });
 });

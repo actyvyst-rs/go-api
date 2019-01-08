@@ -10,17 +10,25 @@ const authRoutes = require('./routes/auth');
 
 console.log(`port: ${port}`);
 
-const server = express();
-server.use(bodyParser.urlencoded({ extended: false }));
-server.use(bodyParser.json());
-server.use(cors());
+const app = express();
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+app.use(cors());
 
-server.use('/api', gatewayRoutes);
-server.use('/api/quiz', quizRoutes);
-server.use('/api/activities', activityRoutes);
-server.use('/api/user', userRoutes);
-server.use('/api/auth', authRoutes);
+app.use('/api', gatewayRoutes);
+app.use('/api/quiz', quizRoutes);
+app.use('/api/activities', activityRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/auth', authRoutes);
 
-server.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`actyvyst GO Gateway API listening on port ${port}`);
+});
+
+process.on('SIGTERM', () => {
+  console.info('SIGTERM signal received.');
+  server.close(() => {
+    console.log('Http server closed.');
+    process.exit(0);
+  });
 });

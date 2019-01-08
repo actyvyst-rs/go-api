@@ -12,39 +12,15 @@ const httpClient = axios.create({
 const activitySerializer = new JSONAPISerializer();
 activitySerializer.register('Activity');
 
-router.get('/', (req, res) => {
+router.get('/*', (req, res) => {
   httpClient
-    .get('/', { params: req.query })
+    .get(req.path, { params: req.query })
     .then(response => {
       return res.json(response.data);
     })
     .catch(error => {
       console.log(error.response.data);
       return res.status(error.response.status).json(error.response.data);
-    });
-});
-
-router.get('/health', (req, res) => {
-  httpClient
-    .get('/health')
-    .then(response => {
-      res.json(response.data);
-    })
-    .catch(err => {
-      console.log(err);
-      res.status(500).send(activitySerializer.serializeError(err));
-    });
-});
-
-router.get('/:id', (req, res) => {
-  httpClient
-    .get(`/${req.params.id}`)
-    .then(response => {
-      res.json(response.data);
-    })
-    .catch(err => {
-      console.log(err);
-      res.status(500).send(activitySerializer.serializeError(err));
     });
 });
 

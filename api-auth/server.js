@@ -5,7 +5,7 @@ const bodyParser = require('body-parser');
 const { port, mongoURI } = require('./config');
 const authRoutes = require('./routes/auth');
 
-const server = express();
+const app = express();
 
 mongoose
   .connect(
@@ -19,11 +19,22 @@ mongoose
     console.log(err);
   });
 
-server.use(bodyParser.urlencoded({ extended: false }));
-server.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
-server.use('/', authRoutes);
+app.use('/', authRoutes);
 
-server.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`actyvyst Go Auth API listening on port ${port}`);
+});
+
+process.on('SIGTERM', () => {
+  console.info('SIGTERM signal received.');
+  server.close(() => {
+    console.log('Http server closed.');
+    mongoose.connection.close(false, () => {
+      console.log('MongoDb connection closed.');
+      process.exit(0);
+    });
+  });
 });

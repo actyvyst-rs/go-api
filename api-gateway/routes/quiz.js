@@ -8,31 +8,15 @@ const httpClient = axios.create({
   timeout: 2000
 });
 
-router.get('/', (req, res) => {
+router.get('/*', (req, res) => {
   httpClient
-    .get('/', { params: req.query })
+    .get(req.path, { params: req.query })
     .then(response => {
-      return res.status(200).json(response.data);
+      return res.json(response.data);
     })
     .catch(error => {
-      if (error.response) {
-        return res.status(error.response.status).json(error.response.data);
-      } else {
-        return res.status(500).json({
-          errors: [
-            {
-              status: 500,
-              code: 'serviceNotAvailable',
-              ref_id: uuid(),
-              title: 'Service not available',
-              details: error.message,
-              source: {
-                parameters: ['quizAPI']
-              }
-            }
-          ]
-        });
-      }
+      console.log(error.response.data);
+      return res.status(error.response.status).json(error.response.data);
     });
 });
 

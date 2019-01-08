@@ -7,102 +7,10 @@ const { authPort } = require('../config');
 
 const httpClient = axios.create({
   baseURL: `http://api-auth:${authPort}/`,
-  // baseURL: `http://${hostname}:${port}/`,
   timeout: 2000
 });
 
-router.get('/', (_, res) => {
-  httpClient
-    .get('/')
-    .then(response => {
-      return res.json(response.data);
-    })
-    .catch(error => {
-      console.log(error.response.data);
-      return res.status(error.response.status).json(error.response.data);
-    });
-});
-
-router.post('/register', (req, res) => {
-  httpClient
-    .post('/register', req.body)
-    .then(response => {
-      return res.json(response.data);
-    })
-    .catch(error => {
-      if (error.response) {
-        return res.status(error.response.status).json(error.response.data);
-      } else {
-        return res.status(500).json({
-          errors: [
-            {
-              status: 500,
-              code: 'serviceNotAvailable',
-              title: 'Service not available',
-              details: err.message,
-              source: {
-                parameters: ['authAPI']
-              }
-            }
-          ]
-        });
-      }
-    });
-});
-
-router.post('/login', (req, res) => {
-  httpClient
-    .post('/login', req.body)
-    .then(response => {
-      return res.json(response.data);
-    })
-    .catch(error => {
-      if (error.response) {
-        return res.status(error.response.status).json(error.response.data);
-      } else {
-        return res.status(500).json({
-          errors: [
-            {
-              status: 500,
-              code: 'serviceNotAvailable',
-              title: 'Service not available',
-              details: error.message,
-              source: {
-                parameters: ['authAPI']
-              }
-            }
-          ]
-        });
-      }
-    });
-});
-
-router.post('/accesstoken', (req, res) => {
-  httpClient
-    .post('/accesstoken', req.body)
-    .then(response => {
-      return res.json(response.data);
-    })
-    .catch(error => {
-      if (error.response) {
-        return res.status(error.response.status).json(error.response.data);
-      } else {
-        return res.status(500).json({
-          errors: [
-            {
-              status: 500,
-              code: 'serviceNotAvailable',
-              title: 'Service not available',
-              details: error.message,
-              source: {
-                parameters: ['authAPI']
-              }
-            }
-          ]
-        });
-      }
-    });
-});
+// protected routes
 
 router.get('/profile', verifyToken, (req, res) => {
   res.status(200).json({
@@ -116,6 +24,34 @@ router.get('/profile', verifyToken, (req, res) => {
       }
     }
   });
+});
+
+// Proxy for all GET routes except the ones above
+
+router.get('/*', (req, res) => {
+  httpClient
+    .get(req.path, { params: req.query })
+    .then(response => {
+      return res.json(response.data);
+    })
+    .catch(error => {
+      console.log(error.response.data);
+      return res.status(error.response.status).json(error.response.data);
+    });
+});
+
+// Proxy for all POST routes except the ones above
+
+router.post('/*', (req, res) => {
+  httpClient
+    .post(req.path, req.body, { params: req.query })
+    .then(response => {
+      return res.json(response.data);
+    })
+    .catch(error => {
+      console.log(error.response.data);
+      return res.status(error.response.status).json(error.response.data);
+    });
 });
 
 module.exports = router;
