@@ -13,6 +13,9 @@ mongoose
     { useNewUrlParser: true }
   )
   .then(() => {
+    mongoose.set('useFindAndModify', false);
+  })
+  .then(() => {
     console.log('Connected to database');
   })
   .catch(err => {

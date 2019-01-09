@@ -7,6 +7,7 @@ const addRefreshToken = (userId, refreshToken, client) => {
     client: client,
     user: userId
   };
+
   return RefreshToken.findOneAndUpdate({ user: userId, client: client }, rt, {
     upsert: true,
     new: true,

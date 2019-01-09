@@ -2,11 +2,15 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const uuid = require('uuid/v4');
+const JSONAPISerializer = require('json-api-serializer');
+
 const nodeUtil = require('util');
 
 const User = require('../models/User');
 const RefreshToken = require('../models/RefreshToken');
+const { APIError } = require('../util/err');
 const { addRefreshToken } = require('../util/dbutil');
 const { extractRequestParams } = require('../util/extract');
 
@@ -16,21 +20,18 @@ const {
   jwtRefreshTokenExpiration
 } = require('./../config');
 
+const Serializer = new JSONAPISerializer();
+Serializer.register('JWT');
+Serializer.register('User');
+Serializer.register('AuthService');
+
 const pingHandler = (_, res) => {
-  res.json({
-    data: {
-      type: 'Message',
-      id: 0,
-      attributes: {
-        message: 'authAPI up and running'
-      }
-    }
-  });
+  data = { message: 'authAPI up and running' };
+  res.json(Serializer.serialize('AuthService', data));
 };
 
-const promJwtVerify = nodeUtil.promisify(jwt.verify);
-const promJwtSign = nodeUtil.promisify(jwt.sign);
-const promBcryptCompare = nodeUtil.promisify(bcrypt.compare);
+const jwtVerify = nodeUtil.promisify(jwt.verify);
+const jwtSign = nodeUtil.promisify(jwt.sign);
 
 const loginHandler = (req, res) => {
   // State object to pass state through Promise chain
@@ -48,29 +49,29 @@ const loginHandler = (req, res) => {
     .then(user => {
       // Check password
       if (!user) {
-        throw new Error('user not found');
+        throw new APIError(400, 'AUTH_WRONG_CREDENTIALS', 'Wrong credentials');
       } else {
         chainState.user = user;
-        return promBcryptCompare(
-          chainState.credentials.password,
-          user.password
-        );
-      }
-    })
-    .then(isMatch => {
-      if (!isMatch) {
-        throw new Error('password invalid');
-      } else {
-        // Create access token
-        const payload = {
-          id: chainState.user._id,
-          firstName: chainState.user.firstName,
-          lastName: chainState.user.lastName,
-          email: chainState.user.email
-        };
-        return promJwtSign(payload, jwtSecret, {
-          expiresIn: jwtTokenExpiration
-        });
+        if (
+          bcrypt.compareSync(chainState.credentials.password, user.password)
+        ) {
+          // Create access token
+          const payload = {
+            id: chainState.user._id,
+            firstName: chainState.user.firstName,
+            lastName: chainState.user.lastName
+          };
+
+          return jwtSign(payload, jwtSecret, {
+            expiresIn: jwtTokenExpiration
+          });
+        } else {
+          throw new APIError(
+            400,
+            'AUTH_WRONG_CREDENTIALS',
+            'Wrong credentials'
+          );
+        }
       }
     })
     .then(token => {
@@ -78,7 +79,7 @@ const loginHandler = (req, res) => {
       chainState.token = token;
       const refreshPayload = { name: 'refreshToken' };
       chainState.refreshPayload = refreshPayload;
-      return promJwtSign(refreshPayload, jwtSecret, {
+      return jwtSign(refreshPayload, jwtSecret, {
         expiresIn: jwtRefreshTokenExpiration
       });
     })
@@ -90,31 +91,17 @@ const loginHandler = (req, res) => {
     })
     .then(() => {
       // Return access and refresh token
-      return res.status(200).json({
-        data: {
-          type: 'JSON Web Token',
-          id: chainState.user.id,
-          attributes: {
-            token: chainState.token,
-            refreshToken: chainState.refreshToken
-          }
-        }
-      });
+      const data = {
+        id: chainState.user.id,
+        token: chainState.token,
+        refreshToken: chainState.refreshToken
+      };
+      return res.status(200).json(Serializer.serialize('JWT', data));
     })
     .catch(err => {
       // Handle errors
-      return res.status(500).json({
-        errors: [
-          {
-            status: 500,
-            code: 'serviceNotAvailable',
-            ref_id: uuid(),
-            title: 'Service not available.',
-            details: err.message,
-            source: { parameters: ['database'] }
-          }
-        ]
-      });
+      const status = err instanceof APIError ? err.status : 500;
+      return res.status(status).json(Serializer.serializeError(err));
     });
 };
 
@@ -126,14 +113,14 @@ const accessTokenHandler = (req, res) => {
       // get user from access token (even if token already expired)
       chainState.refreshToken = result.refreshToken;
       chainState.token = result.token;
-      return promJwtVerify(result.token, jwtSecret, {
+      return jwtVerify(result.token, jwtSecret, {
         ignoreExpiration: true
       });
     })
     .then(decodedToken => {
       // verify refreshtoken
       chainState.userId = decodedToken.id;
-      return promJwtVerify(chainState.refreshToken, jwtSecret);
+      return jwtVerify(chainState.refreshToken, jwtSecret);
     })
     .then(decodedToken => {
       //check db for matching record for refreshtoken, user and client
@@ -146,27 +133,29 @@ const accessTokenHandler = (req, res) => {
     .then(refreshToken => {
       // if refreshToken not found in db, throw error
       if (!refreshToken) {
-        throw new Error('refreshToken is null');
+        throw new APIError(400, 'AUTH_INVALID_TOKEN', 'Invalid refreshToken');
       }
       // Get user info from db
       return User.findOne({ _id: chainState.userId });
     })
     .then(user => {
+      if (!user) {
+        throw new APIError(400, 'AUTH_INVALID_TOKEN', 'Invalid refreshToken');
+      }
       // create new accesstoken
       chainState.user = user;
       const payload = {
         id: user.id,
         firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email
+        lastName: user.lastName
       };
-      return promJwtSign(payload, jwtSecret, { expiresIn: jwtTokenExpiration });
+      return jwtSign(payload, jwtSecret, { expiresIn: jwtTokenExpiration });
     })
     .then(token => {
       chainState.newToken = token;
       //create new refreshToken
       const payload = { name: 'refreshToken' };
-      return promJwtSign(payload, jwtSecret, {
+      return jwtSign(payload, jwtSecret, {
         expiresIn: jwtRefreshTokenExpiration
       });
     })
@@ -179,163 +168,91 @@ const accessTokenHandler = (req, res) => {
       );
     })
     .then(() => {
-      return res.status(200).json({
-        data: {
-          type: 'AccessToken',
-          attributes: {
-            token: chainState.newToken,
-            refreshToken: chainState.newRefreshToken
-          }
-        }
-      });
+      const data = {
+        token: chainState.newToken,
+        refreshToken: chainState.newRefreshToken
+      };
+      return res.status(200).json(Serializer.serialize('User', data));
     })
     .catch(err => {
-      return res.status(500).json({
-        errors: [
-          {
-            status: 500,
-            code: 'serviceNotAvailable',
-            ref_id: uuid(),
-            title: 'Service not available.',
-            details: err.message,
-            source: {}
-          }
-        ]
-      });
+      const status = err instanceof APIError ? err.status : 500;
+      return res.status(status).json(Serializer.serializeError(err));
     });
 };
 
 const registerHandler = (req, res) => {
+  let chainState = {};
   // Verify if request is valid
-  console.log('AUTHAPI-REQUEST-BODY: ' + JSON.stringify(req.body));
-  if (
-    !req.body.email ||
-    !req.body.firstName ||
-    !req.body.lastName ||
-    !req.body.password
-  ) {
-    const code = 'missingRequiredParameter';
-    const title = 'Required request parameters are missing';
-    const detail =
-      'One or more required request parameters are missing. See source for details.';
-    const source = { parameters: [] };
-    if (!req.body.email) {
-      source.parameters.push('email');
-    }
-    if (!req.body.password) {
-      source.parameters.push('password');
-    }
-    if (!req.body.firstName) {
-      source.parameters.push('firstName');
-    }
-    if (!req.body.lastName) {
-      source.parameters.push('lastName');
-    }
-    return res.status(400).json({
-      errors: [
-        {
-          status: 400,
-          code: code,
-          ref_id: uuid(),
-          title: title,
-          detail: detail,
-          source: source
-        }
-      ]
-    });
-  }
-  // Lookup user by email
-  User.findOne({ email: req.body.email }).then(user => {
-    if (user) {
-      // User already exists, return error
-      return res.status(400).json({
-        errors: [
-          {
-            status: 400,
-            code: 'userAlreadyExists',
-            ref_id: uuid(),
-            title: 'User already exists',
-            details: 'A user with this email address is already registered',
-            source: { parameters: ['email'] }
-          }
-        ]
-      });
-    } else {
-      // Create user object from mongoose User model
-      const newUser = new User({
-        firstName: req.body.firstName,
-        lastName: req.body.lastName,
-        email: req.body.email,
-        password: req.body.password
-      });
-      // Hash password
-      bcrypt.genSalt(10, (err, salt) => {
-        bcrypt.hash(newUser.password, salt, (err, hash) => {
-          if (err) {
-            return res.status(500).json({
-              errors: [
-                {
-                  status: 500,
-                  code: 'unexpectedServerError',
-                  ref_id: uuid(),
-                  title: 'Unexpected Server Error',
-                  detail: err.message,
-                  source: {}
-                }
-              ]
-            });
-          }
-          newUser.password = hash;
-          // Save new user to database
-          newUser
-            .save()
-            .then(user => {
-              res.status(200).json({
-                data: {
-                  type: 'User',
-                  id: user.id,
-                  attributes: {
-                    firstName: user.firstName,
-                    lastName: user.lastName,
-                    email: user.email,
-                    state: 'registered'
-                  }
-                }
-              });
-            })
-            .catch(err => {
-              return res.status(500).json({
-                errors: [
-                  {
-                    status: 500,
-                    code: 'serviceNotAvailable',
-                    ref_id: uuid(),
-                    title: 'Service not available',
-                    details: err.message,
-                    source: { parameters: ['database'] }
-                  }
-                ]
-              });
-            });
+  extractRequestParams(req.body, {
+    email: 'String',
+    firstName: 'String',
+    lastName: 'String',
+    password: 'String'
+  })
+    .then(params => {
+      chainState.params = params;
+      // Check if user already exists
+      return User.findOne({ email: chainState.params.email });
+    })
+    .then(user => {
+      // Save user
+      if (user) {
+        throw new APIError(
+          400,
+          'AUTH_USER_ALREADY_EXISTS',
+          'User already exists'
+        );
+      } else {
+        const newUser = new User({
+          firstName: chainState.params.firstName,
+          lastName: chainState.params.lastName,
+          email: chainState.params.email,
+          password: chainState.params.password
         });
-      });
-    }
-  });
+        const salt = bcrypt.genSaltSync(10);
+        newUser.password = bcrypt.hashSync(chainState.params.password, salt);
+        return newUser.save();
+      }
+    })
+    // Return user
+    .then(user => {
+      const { id, firstName, lastName } = user;
+      const data = { id, firstName, lastName };
+      return res.status(200).json(Serializer.serialize('User', data));
+    })
+    .catch(err => {
+      const status = err instanceof APIError ? err.status : 500;
+      return res.status(status).json(Serializer.serializeError(err));
+    });
 };
 
-const currentHandler = (req, res) => {
-  return res.json({
-    data: {
-      type: 'Placeholder',
-      id: 0,
-      attributes: { placeholder: 'Current User' }
-    }
-  });
+const profileHandler = (req, res) => {
+  // Extract user id from query
+  extractRequestParams(req.query, {
+    id: 'String'
+  })
+    // Find user
+    .then(params => {
+      return User.findById(mongoose.Types.ObjectId(params.id));
+    })
+    //  Return user
+    .then(user => {
+      if (!user) {
+        throw new APIError(400, 'AUTH_USER_NOT_FOUND', 'Could not find user.');
+      }
+      const { id, lastName, firstName, email } = user;
+      const data = { id, lastName, firstName, email };
+      return res.status(200).json(Serializer.serialize('User', data));
+    })
+    .catch(err => {
+      const status = err instanceof APIError ? err.status : 500;
+      return res.status(status).json(Serializer.serializeError(err));
+    });
 };
 
 router.get('/', pingHandler);
 router.post('/login', loginHandler);
 router.post('/accesstoken', accessTokenHandler);
 router.post('/register', registerHandler);
-router.get('/current', currentHandler);
+router.get('/profile', profileHandler);
 module.exports = router;
