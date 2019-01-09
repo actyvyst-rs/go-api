@@ -13,17 +13,25 @@ const httpClient = axios.create({
 // protected routes
 
 router.get('/profile', verifyToken, (req, res) => {
-  res.status(200).json({
-    data: {
-      type: 'User',
-      id: req.decoded.id,
-      attributes: {
-        firstName: req.decoded.firstName,
-        lastName: req.decoded.lastName,
-        email: req.decoded.email
+  httpClient
+    .get(req.path, { params: req.decoded })
+    .then(response => {
+      return res.json(response.data);
+    })
+    .catch(error => {
+      if (error.response) {
+        return res.status(error.response.status).json(error.response.data);
+      } else {
+        if (error.request) {
+          console.log(error.request);
+        } else {
+          console.log(error.message);
+        }
+        return res.status(500).json({
+          errors: [{ httpStatus: 500, title: 'Internal server Error' }]
+        });
       }
-    }
-  });
+    });
 });
 
 // Proxy for all GET routes except the ones above
@@ -35,8 +43,18 @@ router.get('/*', (req, res) => {
       return res.json(response.data);
     })
     .catch(error => {
-      console.log(error.response.data);
-      return res.status(error.response.status).json(error.response.data);
+      if (error.response) {
+        return res.status(error.response.status).json(error.response.data);
+      } else {
+        if (error.request) {
+          console.log(error.request);
+        } else {
+          console.log(error.message);
+        }
+        return res.status(500).json({
+          errors: [{ httpStatus: 500, title: 'Internal server Error' }]
+        });
+      }
     });
 });
 
@@ -49,8 +67,18 @@ router.post('/*', (req, res) => {
       return res.json(response.data);
     })
     .catch(error => {
-      console.log(error.response.data);
-      return res.status(error.response.status).json(error.response.data);
+      if (error.response) {
+        return res.status(error.response.status).json(error.response.data);
+      } else {
+        if (error.request) {
+          console.log(error.request);
+        } else {
+          console.log(error.message);
+        }
+        return res.status(500).json({
+          errors: [{ httpStatus: 500, title: 'Internal server Error' }]
+        });
+      }
     });
 });
 

@@ -1,27 +1,22 @@
 const jwt = require('jsonwebtoken');
+const JSONAPISerializer = require('json-api-serializer');
 const { jwtSecret } = require('./../config');
 const uuid = require('uuid/v4');
 
+const Serializer = new JSONAPISerializer();
+
 //Middleware to verify token
 const verifyToken = (req, res, next) => {
-  const token =
-    req.body.token || req.query.token || req.headers['x-access-token'];
+  const token = req.headers['x-access-token'];
   if (token) {
     jwt.verify(token, jwtSecret, function(err, decoded) {
       if (err) {
-        let details = 'Access to this resource is denied';
-        if (err.name && err.name === 'TokenExpiredError') {
-          details = 'access token expired';
-        }
         return res.status(403).json({
           errors: [
             {
               status: 403,
-              code: 'accessDenied',
-              ref_id: uuid(),
-              title: 'Access denied',
-              details: details,
-              source: {}
+              code: 'ACCESS_DENIED',
+              details: 'Access denied'
             }
           ]
         });
@@ -32,15 +27,13 @@ const verifyToken = (req, res, next) => {
       }
     });
   } else {
-    return res.status(403).json({
+    return res.status(400).json({
       errors: [
         {
-          status: 403,
-          code: 'accessDenied',
-          ref_id: uuid(),
-          title: 'Access denied',
-          details: 'Access to this resource is denied',
-          source: {}
+          status: 400,
+          code: 'BAD_REQUEST',
+          details:
+            'Protected resource: Provide parameter [x-access-token] in request header.'
         }
       ]
     });
