@@ -172,7 +172,7 @@ const accessTokenHandler = (req, res) => {
         token: chainState.newToken,
         refreshToken: chainState.newRefreshToken
       };
-      return res.status(200).json(Serializer.serialize('User', data));
+      return res.status(200).json(Serializer.serialize('JWT', data));
     })
     .catch(err => {
       const status = err instanceof APIError ? err.status : 500;
