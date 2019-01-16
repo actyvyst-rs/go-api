@@ -7,9 +7,11 @@ install:
   - docker build -t actyvyst/api-auth ./api-auth
   - docker build -t actyvyst/api-activities ./api-activities
   - docker build -t actyvyst/api-quiz ./api-quiz
+  - docker build -t actyvyst/nginx ./nginx
 after_success:
   - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
   - docker push actyvyst/api-gateway
   - docker push actyvyst/api-auth
   - docker push actyvyst/api-activities
   - docker push actyvyst/api-quiz
+  - docker push actyvyst/nginx
