@@ -6,9 +6,4 @@ class APIError extends Error {
   }
 }
 
-APIError.ErrorCodes = {
-  GENERIC: 0,
-  AUTH_USER_ALREADY_EXISTS: 1
-};
-
 module.exports.APIError = APIError;
