@@ -37,30 +37,34 @@ router.get('/:id', (req, res) => {
 
 router.get('/', async (req, res) => {
   var matchPhrase = {};
-  if (req.params.id) {
-    const objId = mongoose.Types.ObjectId(id);
-    matchPhrase = { _id: objId };
-  } else {
-    if (req.query.category) {
-      await Category.findOne({ name: req.query.category })
-        .exec()
-        .then(category => {
-          if (category) {
-            matchPhrase = {
-              category: mongoose.Types.ObjectId(category.id)
-            };
-          } else {
-            return res.send(activitySerializer.serialize('Activity', {}));
-          }
-        })
-        .catch(err => {
-          console.log(err);
-          return res.status(500).send(activitySerializer.serializeError(err));
-        });
-    }
+
+  if (req.query.category) {
+    await Category.findOne({ name: req.query.category })
+      .exec()
+      .then(category => {
+        if (category) {
+          // matchPhrase = {
+          //   category: mongoose.Types.ObjectId(category.id)
+          // };
+          matchPhrase.category = mongoose.Types.ObjectId(category.id);
+        } else {
+          return res.send(activitySerializer.serialize('Activity', {}));
+        }
+      })
+      .catch(err => {
+        console.log(err);
+        return res.status(500).send(activitySerializer.serializeError(err));
+      });
+  }
+
+  if (req.query.q) {
+    // matchPhrase = { $text: { $search: req.query.q } };
+    matchPhrase.$text = { $search: req.query.q };
   }
   console.log('matchPhrase:');
   console.log(matchPhrase);
+  console.log('req.query.q:');
+  console.log(req.query.q);
   activityDBHelper
     .aggregateActivities(matchPhrase)
     .then(activities => {
