@@ -59,7 +59,9 @@ const loginHandler = (req, res) => {
           const payload = {
             id: chainState.user._id,
             firstName: chainState.user.firstName,
-            lastName: chainState.user.lastName
+            lastName: chainState.user.lastName,
+            email: chainState.user.email,
+            isProvider: chainState.user.acl & 1
           };
 
           return jwtSign(payload, jwtSecret, {

@@ -20,6 +20,10 @@ const UserSchema = new Schema({
     type: String,
     required: true
   },
+  acl: {
+    type: Number,
+    required: false
+  },
   date: {
     type: Date,
     default: Date.now
