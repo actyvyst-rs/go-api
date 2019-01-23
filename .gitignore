@@ -2,6 +2,7 @@ api-auth/node_modules
 api-gateway/node_modules
 api-ibe-old/
 api-activities/node_modules
+api-admin/node_modules
 api-quiz/node_modules
 api-ibe/db-backup
 mongo-seed/
