@@ -88,4 +88,22 @@ const ProviderSchema = new Schema({
   ]
 });
 
+ProviderSchema.statics.getById = async id => {
+  try {
+    const provider = Provider.findById(id);
+    return provider;
+  } catch (err) {
+    throw new Error(err);
+  }
+};
+
+ProviderSchema.statics.updateById = async (id, update) => {
+  try {
+    const oldProvider = await Provider.findByIdAndUpdate(id, update);
+    return oldProvider;
+  } catch (err) {
+    throw new Error(err);
+  }
+};
+
 module.exports = Provider = mongoose.model('provider', ProviderSchema);

@@ -68,4 +68,13 @@ const ActivitySchema = new Schema({
   ]
 });
 
+ActivitySchema.statics.getByProvider = async providerId => {
+  try {
+    const activities = await Activity.find({ provider: providerId });
+    return activities;
+  } catch (err) {
+    throw new Error(err);
+  }
+};
+
 module.exports = Activity = mongoose.model('activities', ActivitySchema);
