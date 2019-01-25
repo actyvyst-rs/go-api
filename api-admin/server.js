@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
+const cors = require('cors');
 
 const { port, mongoURI } = require('./config');
 const providerRoutes = require('./routes/providers');
@@ -8,7 +9,7 @@ const activityRoutes = require('./routes/activities');
 const pingRoutes = require('./routes/ping');
 
 const app = express();
-
+app.use(cors());
 mongoose.connect(
   mongoURI,
   { useNewUrlParser: true }

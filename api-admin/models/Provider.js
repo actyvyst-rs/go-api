@@ -99,8 +99,10 @@ ProviderSchema.statics.getById = async id => {
 
 ProviderSchema.statics.updateById = async (id, update) => {
   try {
-    const oldProvider = await Provider.findByIdAndUpdate(id, update);
-    return oldProvider;
+    const newProvider = await Provider.findByIdAndUpdate(id, update, {
+      new: true
+    });
+    return newProvider;
   } catch (err) {
     throw new Error(err);
   }

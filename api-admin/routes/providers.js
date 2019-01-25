@@ -37,17 +37,19 @@ router
   .patch(async (req, res) => {
     try {
       const providerPatch = await providerDeserializer.deserialize(req.body);
+      console.log(JSON.stringify(providerPatch));
       const { id, ...update } = providerPatch;
       const oldProvider = await Provider.updateById(id, update);
       res.send(providerSerializer.serialize(oldProvider));
-    } catch {
-      req.status(400).send(
+    } catch (err) {
+      res.status(400).send(
         new JSONAPIError({
           code: 'ADMIN_UPDATE_PROVIDER',
           title: err,
           detail: err
         })
       );
+      console.log(err);
     }
   })
   .post(async (req, res) => {});
