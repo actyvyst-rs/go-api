@@ -51,11 +51,11 @@ const ActivitySchema = new Schema({
     },
     lat: {
       type: Number,
-      required: true
+      required: false
     },
     lng: {
       type: Number,
-      required: true
+      required: false
     }
   },
   description: {

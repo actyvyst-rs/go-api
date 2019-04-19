@@ -5,21 +5,24 @@ const { port, mongoURI } = require('./config');
 const activityRoutes = require('./routes/activities');
 
 const app = express();
-
-mongoose
-  .connect(
-    mongoURI,
-    { useNewUrlParser: true }
-  )
-  .then(() => {
-    console.log('Connected to database');
-  })
-  .catch(err => {
-    console.log(err);
-  });
-
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+
+mongoose.connect(
+  mongoURI,
+  { useNewUrlParser: true }
+);
+
+let db = mongoose.connection;
+
+db.on('error', (err) => {
+  console.log(err);
+})
+db.once('open', () => {
+  console.log('Connected to database');
+})
+
+
 
 app.use('/', activityRoutes);
 

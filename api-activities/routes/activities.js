@@ -5,9 +5,13 @@ const mongoose = require('mongoose');
 const Activity = require('../models/Activity');
 const Category = require('../models/Category');
 const activityDBHelper = require('../data/activity');
+const availabilityController = require('../controllers/availabilities');
+const activityController = require('../controllers/activities');
 
 const activitySerializer = new JSONAPISerializer();
-activitySerializer.register('Activity', { id: '_id' });
+activitySerializer.register('Activity', {
+  id: '_id'
+});
 
 router.get('/health', (req, res) => {
   res.json({
@@ -22,8 +26,20 @@ router.get('/health', (req, res) => {
   });
 });
 
+router.get('/test', async (req, res) => {
+  try {
+    activities = await Activity.find().exec();
+    return res.json(activities);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ err });
+  }
+})
+
 router.get('/:id', (req, res) => {
-  const matchPhrase = { _id: mongoose.Types.ObjectId(req.params.id) };
+  const matchPhrase = {
+    _id: mongoose.Types.ObjectId(req.params.id)
+  };
   activityDBHelper
     .aggregateActivities(matchPhrase)
     .then(activity => {
@@ -36,44 +52,44 @@ router.get('/:id', (req, res) => {
 });
 
 router.get('/', async (req, res) => {
-  var matchPhrase = {};
+  try {
+    var matchPhrase = {};
 
-  if (req.query.category) {
-    await Category.findOne({ name: req.query.category })
-      .exec()
-      .then(category => {
-        if (category) {
-          // matchPhrase = {
-          //   category: mongoose.Types.ObjectId(category.id)
-          // };
-          matchPhrase.category = mongoose.Types.ObjectId(category.id);
-        } else {
-          return res.send(activitySerializer.serialize('Activity', {}));
-        }
-      })
-      .catch(err => {
-        console.log(err);
-        return res.status(500).send(activitySerializer.serializeError(err));
-      });
-  }
+    if (req.query.category) {
+      let category = await Category.findOne({
+        name: req.query.category
+      }).exec();
+      if (category) {
+        matchPhrase.category = mongoose.Types.ObjectId(category.id);
+      } else {
+        return res.send(activitySerializer.serialize('Activity', {}));
+      }
+    }
 
-  if (req.query.q) {
-    // matchPhrase = { $text: { $search: req.query.q } };
-    matchPhrase.$text = { $search: req.query.q };
+    if (req.query.q) {
+      matchPhrase.$text = {
+        $search: req.query.q
+      };
+    }
+    console.log('matchPhrase:');
+    console.log(matchPhrase);
+    console.log('req.query.q:');
+    console.log(req.query.q);
+    activities = await activityDBHelper.aggregateActivities(matchPhrase);
+
+    return res.send(activitySerializer.serialize('Activity', activities));
   }
-  console.log('matchPhrase:');
-  console.log(matchPhrase);
-  console.log('req.query.q:');
-  console.log(req.query.q);
-  activityDBHelper
-    .aggregateActivities(matchPhrase)
-    .then(activities => {
-      res.send(activitySerializer.serialize('Activity', activities));
-    })
-    .catch(err => {
-      console.log(err);
-      return res.status(500).send(activitySerializer.serializeError(err));
-    });
+  catch (err) {
+    console.log(err);
+    return res.status(500).send(activitySerializer.serializeError(err));
+  }
 });
+
+
+
+router.get('/:id/availabilities', availabilityController.getAvailabilities);
+router.post('/', activityController.createActivity);
+router.patch('/:id', activityController.updateActivity);
+
 
 module.exports = router;

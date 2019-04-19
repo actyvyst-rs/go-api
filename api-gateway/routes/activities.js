@@ -24,4 +24,29 @@ router.get('/*', (req, res) => {
     });
 });
 
+router.post('/', async (req, res, next) => {
+  try {
+    console.log('activities post route hit');
+    response = await httpClient
+      .post(req.path, req.body, { params: req.query });
+    return res.json({ msg: 'done' });
+  } catch (err) {
+    console.log(err);
+    return res.status(error.response.status).json(error.response.data);
+  }
+});
+
+router.patch('/:id', async (req, res, next) => {
+  try {
+    console.log('activities patch route hit');
+    response = await httpClient
+      .patch(req.path, req.body, { params: req.query });
+    console.log(response.ok);
+    return res.json({ msg: 'done' });
+  } catch (err) {
+    console.log(err);
+    return res.status(error.response.status).json(error.response.data);
+  }
+});
+
 module.exports = router;
